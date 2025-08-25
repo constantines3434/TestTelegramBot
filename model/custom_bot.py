@@ -21,6 +21,7 @@ class CustomBot:
     def register_handlers(self):
         """Регистрируем все обработчики"""
         self.__bot.message_handler(commands=['start'])(self.start)
+        self.__bot.message_handler(commands=['help'])(self.help)
         self.__bot.message_handler(func=self.is_reply_button)(self.handle_reply_buttons)
         self.__bot.callback_query_handler(func=lambda call: True)(self.handle_inline_callback)
         self.__bot.message_handler(content_types=['text'])(self.handle_other_text)
@@ -32,10 +33,18 @@ class CustomBot:
 
     def start(self, message: Message):
         """Обработка команды /start"""
-        user = User()
-        self.__users[message.chat.id] = user
+        # Проверяем, есть ли пользователь уже
+        user = self.__users.get(message.chat.id)
+        if not user:
+            user = User()
+            self.__users[message.chat.id] = user
+
         self.__bot.send_message(message.chat.id, "Как тебя зовут?")
         self.__bot.register_next_step_handler(message, self.user_registration, step="name")
+    
+    def help(self, message: Message):
+        """Помощь пользовател."""
+        self.__bot.send_message(message.chat.id, "Тут будет текст помощи пользователю")
 
     def user_registration(self, message: Message, step="name"):
         """Главный метод регистрации"""
@@ -160,12 +169,10 @@ class CustomBot:
                     message_id=call.message.message_id,
                     reply_markup=self.create_interest_menu()
                 )
-            except apihelper.ApiTelegramException as e:  # <--- здесь
+            except apihelper.ApiTelegramException as e:
                 if "message is not modified" not in str(e):
                     raise
-
-
-
+        
     def show_main_menu(self, chat_id: int):
         """Показать главное меню с кнопками"""
         markup = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -216,7 +223,7 @@ class CustomBot:
             else:
                 self.__bot.send_message(user_id, "❌ Вы не находитесь в диалоге.")
 
-            self.__bot.send_message(user_id, "До встречи!")
+            self.__bot.send_message(user_id, f"Диалог c {user.name if user else 'Неизвестный'} завершён!")
     
     def get_sex_emoji(self, user: User) -> str:
         """Получени эмодзи пола"""
