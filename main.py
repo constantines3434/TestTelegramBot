@@ -1,7 +1,11 @@
 import telebot
 import time
-from user import User
-from custom_bot import CustomBot
+
+#import sys
+#sys.path.append("model")
+
+from model.user import User
+from model.custom_bot import CustomBot
 
 user = User()
 token: str = "8475418659:AAFYV-tcGCHMpEraIhSNIW5yq1K3uZ8uF4w"
