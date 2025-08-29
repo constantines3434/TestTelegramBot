@@ -11,9 +11,7 @@ class CustomBot:
     __waiting_users = []      # пользователи, которые ищут собеседника
     __active_chats = {}       # словарь {id_пользователя: id_собеседника}
     # состояние кнопок интересов
-    __interests = {"movie": False, "memes": False, "music": False}
-    __selected_interests = {}
-
+   
     def __init__(self, token: str):
         self.__bot = TeleBot(token)
         self.register_handlers() 
@@ -22,8 +20,10 @@ class CustomBot:
         """Регистрируем все обработчики"""
         self.__bot.message_handler(commands=['start'])(self.start)
         self.__bot.message_handler(commands=['help'])(self.help)
+        self.__bot.message_handler(commands=['filters'])(self.filter)
         self.__bot.message_handler(func=self.is_reply_button)(self.handle_reply_buttons)
-        self.__bot.callback_query_handler(func=lambda call: True)(self.handle_inline_callback)
+        self.__bot.callback_query_handler(func=lambda call: call.data == "interest_done")(self.handle_interest_inline_callback)
+        self.__bot.callback_query_handler(func=lambda call: call.data == "sex_done")(self.handle_sex_inline_callback)
         self.__bot.message_handler(content_types=['text'])(self.handle_other_text)
     
     @property
@@ -43,8 +43,13 @@ class CustomBot:
         self.__bot.register_next_step_handler(message, self.user_registration, step="name")
     
     def help(self, message: Message):
-        """Помощь пользовател."""
+        """Помощь пользователю"""
         self.__bot.send_message(message.chat.id, "Тут будет текст помощи пользователю")
+
+    def filter(self, message: Message):
+        """фильтры при поиске собеседника (интересы, пол, возраст[число..число])"""
+        self.__bot.send_message(message.chat.id, "Тут будет текст фильтрации")
+        self.get_user_interest(message)
 
     def user_registration(self, message: Message, step="name"):
         """Главный метод регистрации"""
@@ -53,9 +58,15 @@ class CustomBot:
         elif step == "age":
             self.get_user_age(message)
         elif step == "sex":
-            self.get_user_sex(message)
+            self.choice_user_sex(message)
         elif step == "interest":
             self.get_user_interest(message) 
+        
+        """ после выбора пола
+        self.show_main_menu(message.chat.id)
+        self.__bot.send_message(message.chat.id, "Выберите интересы.")
+            #self.__bot.register_next_step_handler(message, self.user_registration, step="interest")
+            self.get_user_interest(message)"""
 
     def get_user_name(self, message: Message):
         """Получение имени пользователя"""
@@ -83,59 +94,100 @@ class CustomBot:
             return
         self.__bot.send_message(message.chat.id, f"Ваш возраст: {user.age}!")
         # следующий шаг -> пол
-        self.__bot.send_message(message.chat.id, "Введи свой пол: М или Ж (позже сделаю кнопками)")
-        self.__bot.register_next_step_handler(message, self.user_registration, step="sex")
+        self.choice_user_sex(message)
         
-    def get_user_sex(self, message: Message):
-        """Получение пола пользователя"""
+    #выбор пола пользователя
+    def choice_user_sex(self, message: Message):
+        """Отправка inline-кнопок для выбора пола"""
         user = self.__users.get(message.chat.id)
+        selected_sex = user.sex if user else None
+        menu = self.create_sex_menu(selected_sex)
+        self.__bot.send_message(
+            message.chat.id,
+            "Выбери свой пол:",
+            reply_markup=menu
+        )
+
+    def create_sex_menu(self, selected_sex: str = None):  
+        """Создание кнопок выбора пола с выделением выбранного"""
+        markup = InlineKeyboardMarkup()
+        
+        text_m = "М ✅" if selected_sex == "Мужской" else "М"
+        text_f = "Ж ✅" if selected_sex == "Женский" else "Ж"
+
+        btn1 = InlineKeyboardButton(text_m, callback_data="m_sex")
+        btn2 = InlineKeyboardButton(text_f, callback_data="f_sex")
+        
+        markup.add(btn1, btn2)
+        markup.add(InlineKeyboardButton("Готово", callback_data="sex_done"))        
+        return markup
+
+    def handle_sex_inline_callback(self, call):
+        """Обработчик inline-кнопок выбора пола"""
+        user_id = call.message.chat.id
+        user = self.__users.get(user_id)
         if not user:
             return
-        try:
-            sex: str
-            sex = str(message.text.strip())
-        except ValueError:
-            self.__bot.send_message(message.chat.id, "Пол должен быть строкой. Попробуй ещё раз.")
-            self.__bot.register_next_step_handler(message, self.user_registration, step="sex")
-            return
-        if(((sex == "М") or (sex == "Ж"))):
-            #обработка
-            user.sex = sex
-            #отображение кнопок
-            self.show_main_menu(message.chat.id)
-            self.__bot.send_message(message.chat.id, "Выберите интересы.")
-            #self.__bot.register_next_step_handler(message, self.user_registration, step="interest")
-            self.get_user_interest(message)
-        else:
-            #сделать в цикле
-            self.__bot.send_message(message.chat.id, "Пол должен быть М или Ж. Попробуй ещё раз.")
-            self.__bot.register_next_step_handler(message, self.user_registration, step="sex")
+
+        # Обработка выбора пола
+        updated = False
+        if call.data == "m_sex":
+            if user.sex != "Мужской":
+                user.sex = "Мужской"
+                updated = True
+            self.__bot.answer_callback_query(call.id, "Вы выбрали: Мужской")
+
+        elif call.data == "f_sex":
+            if user.sex != "Женский":
+                user.sex = "Женский"
+                updated = True
+            self.__bot.answer_callback_query(call.id, "Вы выбрали: Женский")
+
+        elif call.data == "sex_done":
+            if not user.sex:
+                self.__bot.answer_callback_query(call.id, "Выберите пол перед подтверждением!")
+                return
+            self.__bot.send_message(user_id, f"Пол выбран: {user.sex}. Продолжаем регистрацию...")
+            self.user_registration(call.message, step="interest")
+
+        # Обновляем клавиатуру только если был выбран другой пол
+        if updated:
+            try:
+                self.__bot.edit_message_reply_markup(
+                    chat_id=user_id,
+                    message_id=call.message.message_id,
+                    reply_markup=self.create_sex_menu(selected_sex=user.sex)
+                )
+            except apihelper.ApiTelegramException as e:
+                if "message is not modified" not in str(e):
+                    raise
+   
 
     def get_user_interest(self, message: Message):
         """создание интересов """
-        menu = self.create_interest_menu()
+        """menu = self.create_interest_menu()
         self.__bot.send_message(
             message.chat.id,
             "Выбери свои интересы (можно несколько):",
             reply_markup=menu
-        )
+        )"""
     def create_interest_menu(self):  
         """Создание кнопок интересов"""
-        markup = InlineKeyboardMarkup()
+        """markup = InlineKeyboardMarkup()
         for key, selected in self.__interests.items():
             text = f"✅ {key}" if selected else key
             markup.add(InlineKeyboardButton(text, callback_data=key))
-        markup.add(InlineKeyboardButton("Готово", callback_data="done"))
-        return markup
+        markup.add(InlineKeyboardButton("Готово", callback_data="interest_done"))
+        return markup"""
     
-    def handle_inline_callback(self, call):
+    def handle_interest_inline_callback(self, call):
         """Обработчик inline кнопки выбора интересов"""
-        user_id = call.message.chat.id
+        """user_id = call.message.chat.id
         user = self.__users.get(user_id)
         if not user:
             return  # пользователь не найден
 
-        if call.data == "done":
+        if call.data == "interest_done":
             # сохраняем выбранные интересы текущего пользователя
             self.__selected_interests[user_id] = self.__interests.copy()
 
@@ -171,15 +223,82 @@ class CustomBot:
                 )
             except apihelper.ApiTelegramException as e:
                 if "message is not modified" not in str(e):
+                    raise"""
+
+    
+            
+    #фильтр выбора пола собеседника
+    def choice_filter_user_sex(self, message: Message):
+        """Обработчик выбора пола """
+        menu = self.create_sex_menu()
+        self.__bot.send_message(
+            message.chat.id,
+            "Выберите пол собеседника :",
+            reply_markup=menu
+        )
+
+    def create_filter_sex_menu(self):  
+        """Создание кнопок интересов"""
+        markup = InlineKeyboardMarkup()
+        btn1 = InlineKeyboardButton("М", callback_data="m_sex")
+        btn2 = InlineKeyboardButton("Ж", callback_data="f_sex")
+        markup.add(btn1, btn2)
+        markup.add(InlineKeyboardButton("Готово", callback_data="sex_done"))        
+        return markup
+    
+    def handle_filter_sex_inline_callback(self, call):
+        """Обработчик inline кнопки выбора интересов"""
+        """ser_id = call.message.chat.id
+        user = self.__users.get(user_id)
+        if not user:
+            return  # пользователь не найден
+
+        if call.data == "sex_done":
+            # сохраняем выбранные интересы текущего пользователя
+            self.__selected_interests[user_id] = self.__interests.copy()
+
+            # Берём значения по ключам
+            movie_val = self.__interests.get("movie", False)
+            memes_val = self.__interests.get("memes", False)
+            music_val = self.__interests.get("music", False)
+
+            # Вызываем сеттер напрямую с тремя аргументами
+            user.set_interest(movie_val, memes_val, music_val)
+
+            # Отправляем итоговое сообщение
+            try:
+                self.__bot.edit_message_text(
+                    chat_id=user_id,
+                    message_id=call.message.message_id,
+                    text=f"Вы выбрали: {', '.join([k for k, v in self.__interests.items() if v]) or 'ничего'}"
+                )
+            except apihelper.ApiTelegramException as e:
+                if "message is not modified" not in str(e):
                     raise
+
+        elif call.data in self.__interests:
+            # Переключаем состояние выбранной кнопки
+            self.__interests[call.data] = not self.__interests[call.data]
+
+            # Обновляем клавиатуру с защитой от "message is not modified"
+            try:
+                self.__bot.edit_message_reply_markup(
+                    chat_id=user_id,
+                    message_id=call.message.message_id,
+                    reply_markup=self.create_interest_menu()
+                )
+            except apihelper.ApiTelegramException as e:
+                if "message is not modified" not in str(e):
+                    raise"""
+
         
     def show_main_menu(self, chat_id: int):
         """Показать главное меню с кнопками"""
-        markup = ReplyKeyboardMarkup(resize_keyboard=True)
+        """markup = ReplyKeyboardMarkup(resize_keyboard=True)
         markup.add(
             KeyboardButton("Начать диалог"),
             KeyboardButton("Выход")
-        )
+        )"""
     
         
     def handle_other_text(self, message: Message):
@@ -259,9 +378,9 @@ class CustomBot:
             emoji2 = self.get_sex_emoji(user2)
 
             # взаимные интересы
-            interests1 = self.__selected_interests.get(user_id, {})
-            interests2 = self.__selected_interests.get(partner_id, {})
-            mutual_interests = [k for k in interests1 if interests1.get(k) and interests2.get(k)]
+            #interests1 = self.__selected_interests.get(user_id, {})
+            #interests2 = self.__selected_interests.get(partner_id, {})
+            #mutual_interests = [k for k in interests1 if interests1.get(k) and interests2.get(k)]
 
             self.__bot.send_message(
                 user_id,
