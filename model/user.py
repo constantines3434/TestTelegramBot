@@ -9,7 +9,7 @@ class User:
      
     __interests = {"movie": False, "memes": False, "music": False}
     __selected_interests = {}
-    __sex_filters = {"Мужской": False, "Женский": False}
+    __sex_filters = {"М": False, "Ж": False}
     __selected_sex_filters = {}
     
     def __init__(self):

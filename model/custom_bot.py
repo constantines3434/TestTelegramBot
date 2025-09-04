@@ -24,6 +24,8 @@ class CustomBot:
         self.__bot.message_handler(func=self.is_reply_button)(self.handle_reply_buttons)
         self.__bot.callback_query_handler(func=lambda call: call.data == "interest_done")(self.handle_interest_inline_callback)
         self.__bot.callback_query_handler(func=lambda call: call.data == "sex_done")(self.handle_sex_inline_callback)
+        self.__bot.callback_query_handler(func=lambda call: call.data == "m_sex")(self.handle_sex_inline_callback)
+        self.__bot.callback_query_handler(func=lambda call: call.data == "f_sex")(self.handle_sex_inline_callback)
         self.__bot.message_handler(content_types=['text'])(self.handle_other_text)
     
     @property
@@ -107,13 +109,14 @@ class CustomBot:
             "Выбери свой пол:",
             reply_markup=menu
         )
+        
 
     def create_sex_menu(self, selected_sex: str = None):  
         """Создание кнопок выбора пола с выделением выбранного"""
         markup = InlineKeyboardMarkup()
         
-        text_m = "М ✅" if selected_sex == "Мужской" else "М"
-        text_f = "Ж ✅" if selected_sex == "Женский" else "Ж"
+        text_m = "М ✅" if selected_sex == "М" else "М"
+        text_f = "Ж ✅" if selected_sex == "Ж" else "Ж"
 
         btn1 = InlineKeyboardButton(text_m, callback_data="m_sex")
         btn2 = InlineKeyboardButton(text_f, callback_data="f_sex")
@@ -124,22 +127,24 @@ class CustomBot:
 
     def handle_sex_inline_callback(self, call):
         """Обработчик inline-кнопок выбора пола"""
+        
         user_id = call.message.chat.id
         user = self.__users.get(user_id)
+        self.__bot.answer_callback_query(call.id, "Попал в handle_sex_inline_callback")
         if not user:
             return
-
+        
         # Обработка выбора пола
         updated = False
-        if call.data == "m_sex":
-            if user.sex != "Мужской":
-                user.sex = "Мужской"
+        if call.data == "m_sex":            
+            if user.sex != "М":
+                user.sex = "М"
                 updated = True
             self.__bot.answer_callback_query(call.id, "Вы выбрали: Мужской")
 
         elif call.data == "f_sex":
-            if user.sex != "Женский":
-                user.sex = "Женский"
+            if user.sex != "Ж":
+                user.sex = "Ж"
                 updated = True
             self.__bot.answer_callback_query(call.id, "Вы выбрали: Женский")
 
@@ -162,7 +167,7 @@ class CustomBot:
                 if "message is not modified" not in str(e):
                     raise
    
-
+    #интересы
     def get_user_interest(self, message: Message):
         """создание интересов """
         """menu = self.create_interest_menu()
