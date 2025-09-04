@@ -5,13 +5,8 @@ class User:
     __name: str
     __age: int
     __sex: str = None
-    __interest: Interests = Interests()
+    __interests: Interests = Interests()
      
-    __interests = {"movie": False, "memes": False, "music": False}
-    __selected_interests = {}
-    __sex_filters = {"М": False, "Ж": False}
-    __selected_sex_filters = {}
-    
     def __init__(self):
         pass
 
@@ -52,28 +47,44 @@ class User:
         self.__sex = value
 
     
-    def get_interest(self) -> str:
-        """Получение значения свойства __interest"""
-        return self.__interest
+     # ---- interests ----
+    def get_interests(self) -> Interests:
+        """getter for interests"""
+        return self.__interests
 
-    def set_interest(self, movie: bool, memes: bool, music: bool):
-        """Установка значения свойства __interests"""
-        self.__interest.movie = movie
-        self.__interest.memes = memes
-        self.__interest.music = music
-        if((self.__interest.movie is False) 
-           and (self.__interest.memes is False)
-           and (self.__interest.music is False)):
-            self.__interest.just_talking = True
-        else:
-            self.__interest.just_talking = False
+    def set_interests(self, movie: bool, memes: bool, music: bool):
+        """Установка значений интересов"""
+        self.__interests.movie = movie
+        self.__interests.memes = memes
+        self.__interests.music = music
+
+        # just_talking = True, если ни один интерес не выбран
+        self.__interests.just_talking = not (movie or memes or music)
+
+    def toggle_interest(self, key: str):
+        """Переключить интерес по имени"""
+        if hasattr(self.__interests, key):
+            current_val = getattr(self.__interests, key)
+            setattr(self.__interests, key, not current_val)
+
+            # пересчёт just_talking
+            if not (self.__interests.movie or self.__interests.memes or self.__interests.music):
+                self.__interests.just_talking = True
+            else:
+                self.__interests.just_talking = False
 
     def compare_interests(self, other: "User") -> bool:
         """Сравнивает интересы с другим пользователем"""
-        i1 = self.get_interest()  # self.__interest
-        i2 = other.get_interest()  # other.__interest
+        i1 = self.__interests
+        i2 = other.get_interests()
         return (
             (i1.movie and i2.movie) or
             (i1.memes and i2.memes) or
-            (i1.music and i2.music)
+            (i1.music and i2.music) or
+            (i1.just_talking and i2.just_talking)
         )
+    def get_mutual_interests(self, other: "User") -> list[str]:
+        """Возвращает список общих интересов с другим пользователем"""
+        i1 = self.get_interests()
+        i2 = other.get_interests()
+        return [k for k in ["movie", "memes", "music", "just_talking"] if getattr(i1, k) and getattr(i2, k)]
