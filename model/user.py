@@ -6,9 +6,14 @@ class User:
     __age: int
     __sex: str = None
     __interests: Interests = Interests()
+    __sex_filtration = {"М": False, "Ж": False}
      
     def __init__(self):
-        pass
+        self.__name: str = None
+        self.__age: int = None
+        self.__sex: str = None
+        self.__interests: Interests = Interests()
+        self.__sex_filtration = {"М": False, "Ж": False}
 
     @property
     def name(self) -> str:
@@ -88,3 +93,21 @@ class User:
         i1 = self.get_interests()
         i2 = other.get_interests()
         return [k for k in ["movie", "memes", "music", "just_talking"] if getattr(i1, k) and getattr(i2, k)]
+
+    # --- фильтрация по полу ---
+    def set_sex_filter(self, sex: str, value: bool):
+        """Включает/выключает фильтрацию по полу"""
+        if sex not in self.__sex_filtration:
+            raise ValueError("Некорректный пол для фильтра")
+        self.__sex_filtration[sex] = value
+
+    def get_sex_filters(self) -> dict:
+        """Возвращает словарь фильтров по полу"""
+        return self.__sex_filtration
+
+    def matches_sex(self, other: "User") -> bool:
+        """Проверяет, подходит ли другой пользователь по фильтру пола"""
+        # Если фильтры выключены, подходит любой
+        if not any(self.__sex_filtration.values()):
+            return True
+        return self.__sex_filtration.get(other.sex, False)
