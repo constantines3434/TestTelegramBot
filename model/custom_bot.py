@@ -18,13 +18,25 @@ class CustomBot:
     __active_chats = {}  # {chat_id: partner_chat_id}
 
     def __init__(self, token: str):
+        """Конструктор класса"""
         self.__bot = TeleBot(token)
         self.register_handlers()
 
     def register_handlers(self):
+        """Регистратор обработчиков"""
         self.__bot.message_handler(commands=["start"])(self.start)
         self.__bot.message_handler(commands=["help"])(self.help)
         self.__bot.message_handler(commands=["filters"])(self.filter)
+        ##############################
+        #обработчик типов сообщений
+        self.__bot.message_handler(content_types=["sticker"])(self.sticker_handler)
+        self.__bot.message_handler(content_types=["voice"])(self.voice_message_handler)
+        self.__bot.message_handler(content_types=["audio"])(self.audio_message_handler)
+        self.__bot.message_handler(content_types=["video"])(self.video_message_handler)
+        self.__bot.message_handler(content_types=["video_note"])(self.video_note_message_handler)
+        self.__bot.message_handler(content_types=["document"])(self.document_message_handler)
+        self.__bot.message_handler(content_types=["photo"])(self.photo_message_handler)
+        ##############################
         self.__bot.message_handler(func=self.is_reply_button)(self.handle_reply_buttons)
         self.__bot.callback_query_handler(
             func=lambda c: c.data.startswith("interest_") or c.data == "interest_done"
@@ -40,10 +52,12 @@ class CustomBot:
 
     @property
     def bot(self) -> TeleBot:
+        """геттер бота"""
         return self.__bot
 
     # ------------------ Регистрация ------------------
     def start(self, message: Message):
+        """Заполнение информации о пользователе"""
         user = self.__users.get(message.chat.id)
         if not user:
             user = User()
@@ -54,6 +68,7 @@ class CustomBot:
         )
 
     def user_registration(self, message: Message, step="name"):
+        """Регистрация пользователя"""
         user = self.__users.get(message.chat.id)
         if not user:
             user = User()
@@ -86,14 +101,17 @@ class CustomBot:
             self.get_user_interest(message)
 
     def help(self, message: Message):
+        """Обработчик помощи пользователю"""
         self.__bot.send_message(message.chat.id, "Тут будет текст помощи пользователю")
 
     def filter(self, message: Message):
+        """Фильтрация по интересам"""
         self.__bot.send_message(message.chat.id, "Фильтры поиска собеседника:")
         self.get_user_interest(message)
 
     # ------------------ Пол ------------------
     def choice_user_sex(self, message: Message):
+        """Выбор пола пользователя"""
         user = self.__users.get(message.chat.id)
         menu = self.create_user_sex_menu(user.sex if user else None)
         self.__bot.send_message(
@@ -101,6 +119,7 @@ class CustomBot:
         )
 
     def create_user_sex_menu(self, selected_sex: str = None):
+        """Создание кнопок выбора пола пользователя"""
         markup = InlineKeyboardMarkup()
         text_m = "М ✅" if selected_sex == "М" else "М"
         text_f = "Ж ✅" if selected_sex == "Ж" else "Ж"
@@ -112,6 +131,7 @@ class CustomBot:
         return markup
 
     def handle_user_sex_inline_callback(self, call):
+        """Оброботчик выбора пола пользователя кнопкаами"""
         user_id = call.message.chat.id
         user = self.__users.get(user_id)
         if not user:
@@ -155,6 +175,7 @@ class CustomBot:
         # ------------------ Фильтрация по полу собеседника ------------------
 
     def choice_partner_sex(self, message: Message):
+        """Выбор пола собеседника"""
         user = self.__users.get(message.chat.id)
         menu = self.create_partner_sex_menu(user.get_sex_filters() if user else None)
         self.__bot.send_message(
@@ -162,6 +183,7 @@ class CustomBot:
         )
 
     def create_partner_sex_menu(self, sex_filters: dict = None):
+        """Создание меню выбора пола собеседника"""
         markup = InlineKeyboardMarkup()
         if not sex_filters:
             sex_filters = {"М": False, "Ж": False}
@@ -177,6 +199,7 @@ class CustomBot:
         return markup
 
     def handle_partner_sex_inline_callback(self, call):
+        """Обработчик выбора пола собеседника кнопками"""
         user_id = call.message.chat.id
         user = self.__users.get(user_id)
         if not user:
@@ -224,12 +247,14 @@ class CustomBot:
 
     # ------------------ Интересы ------------------
     def get_user_interest(self, message: Message):
+        """Получение интересов пользователя выбором кнопок"""
         menu = self.create_interest_menu(message.chat.id)
         self.__bot.send_message(
             message.chat.id, "Выберите свои интересы:", reply_markup=menu
         )
 
     def create_interest_menu(self, chat_id: int):
+        """Создание кнопок интересов"""
         user = self.__users.get(chat_id)
         markup = InlineKeyboardMarkup()
         if user:
@@ -244,6 +269,7 @@ class CustomBot:
         return markup
 
     def handle_interest_inline_callback(self, call):
+        """Обработчик кнопок интересов"""
         user_id = call.message.chat.id
         user = self.__users.get(user_id)
         if not user:
@@ -280,14 +306,17 @@ class CustomBot:
 
     # ------------------ Главное меню ------------------
     def show_main_menu(self, chat_id: int):
+        """Отображение меню"""
         markup = ReplyKeyboardMarkup(resize_keyboard=True)
         markup.add(KeyboardButton("Начать диалог"), KeyboardButton("Выход"))
         self.__bot.send_message(chat_id, "Выберите действие:", reply_markup=markup)
 
     def is_reply_button(self, msg: Message) -> bool:
+        """Проверка на reply кнопку"""
         return msg.text in ["Начать диалог", "Выход"]
 
     def handle_reply_buttons(self, message: Message):
+        """обработка reply кнопок"""
         user_id = message.chat.id
         if message.text == "Начать диалог":
             self.__bot.send_message(user_id, "Поиск пользователя...")
@@ -296,24 +325,97 @@ class CustomBot:
             self.end_chat(user_id)
 
     def handle_other_text(self, message: Message):
+        """Обработка не системного текст"""
         chat_id = message.chat.id
+        #сообшения в диалоге
         if chat_id in self.__active_chats:
             partner_id = self.__active_chats[chat_id]
             self.__bot.send_message(
-                partner_id, f"Сообщение от собеседника: {message.text}"
+                partner_id, f"{message.text}"
             )
         else:
             self.__bot.send_message(
                 chat_id, "Для продолжения выберите /start или кнопки"
             )
+    
+    def sticker_handler(self, message: Message):
+        """Обработчик стикеров"""
+        partner_id = self.__active_chats.get(message.chat.id)
+        if partner_id:
+            sticker_id = message.sticker.file_id
+            self.__bot.send_sticker(partner_id, sticker_id)
+        else:
+            self.__bot.send_message(message.chat.id, "Стикеры обрабатываются только в переписке")
+            
+    def voice_message_handler(self, message: Message):
+        """Обработчик голосовых сообщений"""
+        partner_id = self.__active_chats.get(message.chat.id)
+        if partner_id:
+            voice_message_id = message.voice.file_id
+            self.__bot.send_voice(partner_id, voice_message_id)
+        else:
+            self.__bot.send_message(message.chat.id, "Голосовые сообщения обрабатываются только в переписке")
+    
+    def audio_message_handler(self, message: Message):
+        """Обработчик аудиофайлов"""
+        partner_id = self.__active_chats.get(message.chat.id)
+        if partner_id:
+            audio_message_id = message.audio.file_id
+            self.__bot.send_audio(partner_id, audio_message_id)
+        else:
+            self.__bot.send_message(message.chat.id, "Аудиофайлы сообщения обрабатываются только в переписке")
+    
+    def video_message_handler(self, message: Message):
+        """Обработчик видео"""
+        partner_id = self.__active_chats.get(message.chat.id)
+        if partner_id:
+            video_message_id = message.video.file_id
+            self.__bot.send_video(partner_id, video_message_id)
+        else:
+            self.__bot.send_message(message.chat.id, "Видео обрабатываются только в переписке")        
 
-    # ------------------ Поиск собеседника ------------------
+    def video_note_message_handler(self, message: Message):
+        """Обработчик видео сообщений"""
+        partner_id = self.__active_chats.get(message.chat.id)
+        if partner_id:
+            video_note_message_id = message.video_note.file_id
+            self.__bot.send_video_note(partner_id, video_note_message_id)
+        else:
+            self.__bot.send_message(message.chat.id, "Видеосообщения обрабатываются только в переписке")
+    
+    def document_message_handler(self, message: Message):
+        """Обработчик документов в сообщениях"""
+        partner_id = self.__active_chats.get(message.chat.id)
+        if partner_id:
+            document_message_id = message.document.file_id
+            self.__bot.send_document(partner_id, document_message_id)
+        else:
+            self.__bot.send_message(message.chat.id, "Документы обрабатываются только в переписке")
+    
+    def photo_message_handler(self, message: Message):
+        """Обработчик фото в сообщениях"""
+        partner_id = self.__active_chats.get(message.chat.id)
+        if partner_id:
+            # Получаем ID самой качественной фотографии
+            photo_message_id = message.photo[-1].file_id
+            # Получаем текст, прикреплённый к фотографии
+            caption = message.caption
+            # Отправляем фотографию с текстом собеседнику
+            self.__bot.send_photo(partner_id, photo_message_id, caption=caption)
+        else:
+            self.__bot.send_message(message.chat.id, "Фотографии обрабатываются только в переписке")
+
+
+
     def get_sex_emoji(self, user: User) -> str:
+        """Получение эмодзи пола"""
         if user.sex:
             return "👨" if user.sex.lower() == "м" else "👩"
         return ""
 
+    
     def search_user(self, user_id: int):
+        """поиск собеседника"""
         user = self.__users.get(user_id)
         if not user:
             return
@@ -369,6 +471,7 @@ class CustomBot:
 
 
     def end_chat(self, user_id: int):
+        """Обработчик завершения чата"""
         if user_id in self.__active_chats:
             partner_id = self.__active_chats.pop(user_id)
             if partner_id in self.__active_chats:
