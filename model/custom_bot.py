@@ -6,6 +6,7 @@ from telebot.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
 )
+from telebot.formatting import hbold, hcite, escape_html
 from model.user import User
 
 
@@ -325,19 +326,32 @@ class CustomBot:
             self.end_chat(user_id)
 
     def handle_other_text(self, message: Message):
-        """Обработка не системного текст"""
+        """Обработка текста с цитатой ответа и названием (бот или партнёр)."""
         chat_id = message.chat.id
-        #сообшения в диалоге
-        if chat_id in self.__active_chats:
-            partner_id = self.__active_chats[chat_id]
-            self.__bot.send_message(
-                partner_id, f"{message.text}"
-            )
+
+        if chat_id not in self.__active_chats:
+            self.__bot.send_message(chat_id, "Для продолжения выберите /start или кнопки")
+            return
+
+        partner_id = self.__active_chats[chat_id]
+
+        if message.reply_to_message:
+            original = message.reply_to_message
+            quote_text = original.text or "<медиа>"
+            formatted_quote = hcite(quote_text, escape=True)
+
+            # Определяем, кто пишет сообщение (текущий пользователь)
+            sender = self.__users.get(chat_id)
+            sender_name = sender.name if sender is not None else "Собеседник"
+            title = hbold(escape_html(sender_name), escape=True)
+
+            user_text = escape_html(message.text)
+            response = "\n".join([title, formatted_quote, user_text])
+            self.__bot.send_message(partner_id, response, parse_mode='HTML')
+
         else:
-            self.__bot.send_message(
-                chat_id, "Для продолжения выберите /start или кнопки"
-            )
-    
+            self.__bot.send_message(partner_id, escape_html(message.text), parse_mode='HTML')
+
     def sticker_handler(self, message: Message):
         """Обработчик стикеров"""
         partner_id = self.__active_chats.get(message.chat.id)
