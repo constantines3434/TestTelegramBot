@@ -9,7 +9,7 @@ class SqlHandler:
     conn: sqlite3.Connection     # объект соединения
     cursor: sqlite3.Cursor       # объект курсора
     table_name: str              # имя таблицы
-    fields: dict                 # структура полей таблицы
+    #fields: dict                 # структура полей таблицы
 
     def __init__(self, db_name: str):
         """Конструктор класса"""
@@ -41,27 +41,4 @@ class SqlHandler:
         query = f"CREATE TABLE IF NOT EXISTS {self.table_name} ({fields_str})"
         self.cursor.execute(query)
         self.conn.commit()
-
-    def insert_user(self, name: str, age: int):
-        """Добавление пользователя"""
-        sql = f"INSERT INTO {self.table_name} (name, age) VALUES (?, ?)"
-        self.cursor.execute(sql, (name, age))
-        self.conn.commit()
-
-    def get_all_users(self):
-        """Получение всех пользователей"""
-        sql = f"SELECT * FROM {self.table_name}"
-        self.cursor.execute(sql)
-        return self.cursor.fetchall()
-
-    def update_user_age(self, name: str, new_age: int):
-        """Обновление возраста пользователя"""
-        sql = f"UPDATE {self.table_name} SET age = ? WHERE name = ?"
-        self.cursor.execute(sql, (new_age, name))
-        self.conn.commit()
-
-    def delete_user(self, name: str):
-        """Удаление пользователя по имени"""
-        sql = f"DELETE FROM {self.table_name} WHERE name = ?"
-        self.cursor.execute(sql, (name,))
-        self.conn.commit()
+    

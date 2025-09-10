@@ -1,19 +1,50 @@
 from model.interests import Interests
+from model.sql_handler import SqlHandler
 class User:
     """Класс пользователя"""
 
     __name: str
     __age: int
-    __sex: str = None
-    __interests: Interests = Interests()
-    __sex_filtration = {"М": False, "Ж": False}
+    __sex: str
+    __interests: Interests
+    __sex_filtration = {}
+    __db_handler: SqlHandler
      
     def __init__(self):
+
         self.__name: str = None
         self.__age: int = None
         self.__sex: str = None
         self.__interests: Interests = Interests()
         self.__sex_filtration = {"М": False, "Ж": False}
+        self.__db_handler = None
+
+    
+
+    def insert_user(self, name: str, age: int):
+        """Добавление пользователя"""
+        sql = f"INSERT INTO {self.__db_handler.table_name} (name, age) VALUES (?, ?)"
+        self.__db_handler.cursor.execute(sql, (name, age))
+        self.__db_handler.conn.commit()
+
+    def get_all_users(self):
+        """Получение всех пользователей"""
+        sql = f"SELECT * FROM {self.__db_handler.table_name}"
+        self.__db_handler.cursor.execute(sql)
+        return self.__db_handler.cursor.fetchall()
+
+    def update_user_age(self, name: str, new_age: int):
+        """Обновление возраста пользователя"""
+        sql = f"UPDATE {self.__db_handler.table_name} SET age = ? WHERE name = ?"
+        self.__db_handler.cursor.execute(sql, (new_age, name))
+        self.__db_handler.conn.commit()
+
+    def delete_user(self, name: str):
+        """Удаление пользователя по имени"""
+        sql = f"DELETE FROM {self.__db_handler.table_name} WHERE name = ?"
+        self.__db_handler.cursor.execute(sql, (name,))
+        self.__db_handler.conn.commit()
+
 
     @property
     def name(self) -> str:
