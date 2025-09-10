@@ -1,0 +1,59 @@
+[33mcommit e1d98e0bc05c6ca552e0fc3e6692336dc481d164[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdevelop[m[33m, [m[1;31morigin/develop[m[33m)[m
+Author: constantines3434 <constantines748@gmail.com>
+Date:   Sat Sep 6 10:40:36 2025 +0300
+
+    Добавлена обработка ответов на сообщения
+
+[33mcommit f86f582442cba48cedccbc0566f399a27e263331[m
+Author: constantines3434 <constantines748@gmail.com>
+Date:   Fri Sep 5 18:11:01 2025 +0300
+
+    Добавлена обработка стикеров, голосовых сообщений, музыки, видео, видеоосбщений, документов и фотографий
+
+[33mcommit ff7187f08e313e55ce01222c3a5e02dad8da5f47[m
+Author: constantines3434 <constantines748@gmail.com>
+Date:   Thu Sep 4 21:24:40 2025 +0300
+
+    Добавлена фильтрация поиска собеседника по полу
+
+[33mcommit 6b5b3dd6d33d6fde385a9c5bb0bc08483d899a8d[m
+Author: constantines3434 <constantines748@gmail.com>
+Date:   Thu Sep 4 14:58:08 2025 +0300
+
+    Интересы отнесены к пользователю
+
+[33mcommit 2c14f645ecd7826021b9941cdd1d0a98892b391c[m
+Author: constantines3434 <constantines748@gmail.com>
+Date:   Thu Sep 4 13:01:24 2025 +0300
+
+    Реализован выбор пола через кнопки
+
+[33mcommit 282d7c6d8f1dc37dfa627687eb918a7e6e4e4dd0[m
+Author: Constantine <constantines748@gmail.com>
+Date:   Fri Aug 29 15:04:38 2025 +0300
+
+    =
+
+[33mcommit e50480ce08d3c099c78cd3ef0535750afb4b7b19[m
+Author: Constantine <constantines748@gmail.com>
+Date:   Mon Aug 25 17:51:21 2025 +0300
+
+    =
+
+[33mcommit 00e5f78e35cad360af8973284a8f378ba5729da0[m
+Author: Constantine <constantines748@gmail.com>
+Date:   Mon Aug 25 16:20:11 2025 +0300
+
+    Добавлена основа поиска собеседника по взаимным интересам
+
+[33mcommit 2aa68fc675432fa5815bcedd6ee9e1ec87e1bff5[m
+Author: Constantine <constantines748@gmail.com>
+Date:   Mon Aug 25 13:19:19 2025 +0300
+
+    Добавлена основа для анон бота
+
+[33mcommit 8312aa6bb1e2a36a1e4560247d2ec858f9a5455c[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m
+Author: Constantine Smirnov <130066734+constantines3434@users.noreply.github.com>
+Date:   Thu Aug 21 17:48:09 2025 +0300
+
+    Initial commit
