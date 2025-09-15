@@ -35,3 +35,27 @@ def handle_user_sex_inline_callback(self, call):
                 user.sex = "М"
                 updated = True
             self.__bot.answer_callback_query(call.id, "Вы выбрали: Мужской")
+
+
+
+####################
+бд консоль
+####################
+Вход
+sqlite3 my_database.db
+
+Посмотреть список таблиц
+.tables
+
+Просмотреть структуру таблицы
+.schema users
+
+Сделать выборку данных
+SELECT * FROM users;
+
+Удалление таблицы
+DROP TABLE users;
+
+
+Выйти из SQLite
+.quit

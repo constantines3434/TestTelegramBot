@@ -8,20 +8,12 @@ class SqlHandler:
     db_name: str                 # имя файла базы данных
     conn: sqlite3.Connection     # объект соединения
     cursor: sqlite3.Cursor       # объект курсора
-    table_name: str              # имя таблицы
-    #fields: dict                 # структура полей таблицы
-
+    
     def __init__(self, db_name: str):
         """Конструктор класса"""
         self.db_name = db_name
         self.conn = None
         self.cursor = None
-        self.table_name = "users"
-        self.fields = {
-            "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
-            "name": "TEXT NOT NULL",
-            "age": "INTEGER"
-        }
 
     def connect(self):
         """Подключение к базе данных"""
@@ -32,13 +24,31 @@ class SqlHandler:
         """Закрытие соединения"""
         if self.conn:
             self.conn.close()
-
+    
     def create_user_table(self):
         """Создание таблицы пользователей"""
+        fields: dict = {
+            "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+            "name": "TEXT NOT NULL",
+            "age": "INTEGER",
+            "sex": "TEXT"
+        }
+        
         fields_str = ", ".join(
-            f"{name} {dtype}" for name, dtype in self.fields.items()
+            f"{name} {dtype}" for name, dtype in fields.items()
         )
-        query = f"CREATE TABLE IF NOT EXISTS {self.table_name} ({fields_str})"
+        query = f"CREATE TABLE IF NOT EXISTS users ({fields_str})"
         self.cursor.execute(query)
         self.conn.commit()
     
+    def get_all_users(self):
+        """Получение всех пользователей"""
+        sql = "SELECT * FROM users"
+        self.cursor.execute(sql)
+        return self.cursor.fetchall()
+    
+    def delete_user(self, id: int):
+        """Удаление пользователя по имени"""
+        sql = "DELETE FROM users WHERE id = ?"
+        self.cursor.execute(sql, (id))
+        self.conn.commit()

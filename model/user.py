@@ -2,7 +2,7 @@ from model.interests import Interests
 from model.sql_handler import SqlHandler
 class User:
     """Класс пользователя"""
-
+    __id: int
     __name: str
     __age: int
     __sex: str
@@ -10,41 +10,15 @@ class User:
     __sex_filtration = {}
     __db_handler: SqlHandler
      
-    def __init__(self):
-
+    def __init__(self, db_handler: SqlHandler):
+        """Конструктор"""
+        self.__id: int = None
         self.__name: str = None
         self.__age: int = None
         self.__sex: str = None
         self.__interests: Interests = Interests()
         self.__sex_filtration = {"М": False, "Ж": False}
-        self.__db_handler = None
-
-    
-
-    def insert_user(self, name: str, age: int):
-        """Добавление пользователя"""
-        sql = f"INSERT INTO {self.__db_handler.table_name} (name, age) VALUES (?, ?)"
-        self.__db_handler.cursor.execute(sql, (name, age))
-        self.__db_handler.conn.commit()
-
-    def get_all_users(self):
-        """Получение всех пользователей"""
-        sql = f"SELECT * FROM {self.__db_handler.table_name}"
-        self.__db_handler.cursor.execute(sql)
-        return self.__db_handler.cursor.fetchall()
-
-    def update_user_age(self, name: str, new_age: int):
-        """Обновление возраста пользователя"""
-        sql = f"UPDATE {self.__db_handler.table_name} SET age = ? WHERE name = ?"
-        self.__db_handler.cursor.execute(sql, (new_age, name))
-        self.__db_handler.conn.commit()
-
-    def delete_user(self, name: str):
-        """Удаление пользователя по имени"""
-        sql = f"DELETE FROM {self.__db_handler.table_name} WHERE name = ?"
-        self.__db_handler.cursor.execute(sql, (name,))
-        self.__db_handler.conn.commit()
-
+        self.__db_handler = db_handler
 
     @property
     def name(self) -> str:
@@ -56,6 +30,12 @@ class User:
         """Установка значения свойства __name"""
         if not isinstance(value, str):
             raise ValueError("Имя должно быть строкой")
+        # Получаем последний id
+        self.__db_handler.cursor.execute("SELECT MAX(id) FROM users")
+        result = self.__db_handler.cursor.fetchone()
+        last_id = result[0] if result[0] is not None else 0
+        new_id = last_id + 1
+        self.__id = new_id
         self.__name = value
 
     @property
@@ -82,7 +62,6 @@ class User:
             raise ValueError("Пол должен быть строкой")
         self.__sex = value
 
-    
      # ---- interests ----
     def get_interests(self) -> Interests:
         """getter for interests"""
@@ -142,3 +121,22 @@ class User:
         if not any(self.__sex_filtration.values()):
             return True
         return self.__sex_filtration.get(other.sex, False)
+    
+    # --- методы для работы с бд ---
+    def insert_user_in_database(self):
+        """Добавление пользователя с id = последний id + 1"""        
+        sql = "INSERT INTO users (id, name, age, sex) VALUES (?, ?, ?, ?)"
+        self.__db_handler.cursor.execute(sql, (self.__id, self.__name, self.__age, self.__sex))
+        self.__db_handler.conn.commit()
+
+    def update_user_age_in_database(self, new_age: int):
+        """Обновление возраста пользователя"""
+        sql = "UPDATE users SET age = ? WHERE id = ?"
+        self.__db_handler.cursor.execute(sql, (new_age, self.__id))
+        self.__db_handler.conn.commit()
+
+    def delete_user(self):
+        """Удаление пользователя по имени"""
+        sql = "DELETE FROM users WHERE id = ?"
+        self.__db_handler.cursor.execute(sql, (self.__id))
+        self.__db_handler.conn.commit()
