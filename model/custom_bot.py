@@ -8,7 +8,7 @@ from telebot.types import (
 )
 from telebot.formatting import hbold, hcite, escape_html
 from model.user import User
-
+from model.sql_handler import SqlHandler
 
 class CustomBot:
     """Бот для поиска собеседника с учетом интересов и пола"""
@@ -17,9 +17,13 @@ class CustomBot:
     __users = {}  # {chat_id: User}
     __waiting_users = []  # список chat_id пользователей, которые ищут собеседника
     __active_chats = {}  # {chat_id: partner_chat_id}
-
+    __db_handler: SqlHandler
     def __init__(self, token: str):
         """Конструктор класса"""
+        self.__db_handler = SqlHandler("my_database.db")
+        self.__db_handler.connect()
+        self.__db_handler.create_user_table()
+
         self.__bot = TeleBot(token)
         self.register_handlers()
 
@@ -61,7 +65,7 @@ class CustomBot:
         """Заполнение информации о пользователе"""
         user = self.__users.get(message.chat.id)
         if not user:
-            user = User()
+            user = User(self.__db_handler)
             self.__users[message.chat.id] = user
         self.__bot.send_message(message.chat.id, "Как тебя зовут?")
         self.__bot.register_next_step_handler(
@@ -71,10 +75,7 @@ class CustomBot:
     def user_registration(self, message: Message, step="name"):
         """Регистрация пользователя"""
         user = self.__users.get(message.chat.id)
-        if not user:
-            user = User()
-            self.__users[message.chat.id] = user
-
+        
         if step == "name":
             user.name = message.text.strip()
             self.__bot.send_message(
@@ -304,7 +305,8 @@ class CustomBot:
             except apihelper.ApiTelegramException as e:
                 if "message is not modified" not in str(e):
                     raise
-
+            self.__bot.send_message(user_id, "Проверка корректности данных и отправка в бд")
+            self.__db_handler.close()
     # ------------------ Главное меню ------------------
     def show_main_menu(self, chat_id: int):
         """Отображение меню"""
