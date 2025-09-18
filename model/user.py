@@ -1,142 +1,144 @@
+import sqlite3
 from model.interests import Interests
 from model.sql_handler import SqlHandler
+
+
 class User:
     """Класс пользователя"""
-    __id: int
-    __name: str
-    __age: int
-    __sex: str
-    __interests: Interests
-    __sex_filtration = {}
-    __db_handler: SqlHandler
-     
+
     def __init__(self, db_handler: SqlHandler):
-        """Конструктор"""
-        self.__id: int = None
-        self.__name: str = None
-        self.__age: int = None
-        self.__sex: str = None
+        self.__id: int | None = None
+        self.__name: str | None = None
+        self.__age: int | None = None
+        self.__sex: str | None = None
         self.__interests: Interests = Interests()
-        self.__sex_filtration = {"М": False, "Ж": False}
+        self.__sex_filtration: dict[str, bool] = {"М": False, "Ж": False}
         self.__db_handler = db_handler
 
+    # --- свойства ---
     @property
-    def name(self) -> str:
-        """Получение значения свойства __name"""
+    def id(self) -> int | None:
+        return self.__id
+
+    @property
+    def name(self) -> str | None:
         return self.__name
 
     @name.setter
     def name(self, value: str):
-        """Установка значения свойства __name"""
         if not isinstance(value, str):
             raise ValueError("Имя должно быть строкой")
-        # Получаем последний id
-        self.__db_handler.cursor.execute("SELECT MAX(id) FROM users")
-        result = self.__db_handler.cursor.fetchone()
-        last_id = result[0] if result[0] is not None else 0
-        new_id = last_id + 1
-        self.__id = new_id
         self.__name = value
 
     @property
-    def age(self) -> int:
-        """Получение значения свойства __age"""
+    def age(self) -> int | None:
         return self.__age
 
     @age.setter
     def age(self, value: int):
-        """Установка значения свойства __age"""
         if not isinstance(value, int):
             raise ValueError("Возраст должен быть целым числом")
         self.__age = value
 
     @property
-    def sex(self) -> str:
-        """Получение значения свойства __sex"""
+    def sex(self) -> str | None:
         return self.__sex
 
     @sex.setter
     def sex(self, value: str):
-        """Установка значения свойства __sex"""
-        if not isinstance(value, str):
-            raise ValueError("Пол должен быть строкой")
+        if value not in ("М", "Ж"):
+            raise ValueError("Пол должен быть 'М' или 'Ж'")
         self.__sex = value
 
-     # ---- interests ----
+    # --- interests ---
     def get_interests(self) -> Interests:
-        """getter for interests"""
         return self.__interests
 
     def set_interests(self, movie: bool, memes: bool, music: bool):
-        """Установка значений интересов"""
         self.__interests.movie = movie
         self.__interests.memes = memes
         self.__interests.music = music
-
-        # just_talking = True, если ни один интерес не выбран
         self.__interests.just_talking = not (movie or memes or music)
 
     def toggle_interest(self, key: str):
-        """Переключить интерес по имени"""
         if hasattr(self.__interests, key):
             current_val = getattr(self.__interests, key)
             setattr(self.__interests, key, not current_val)
-
-            # пересчёт just_talking
-            if not (self.__interests.movie or self.__interests.memes or self.__interests.music):
-                self.__interests.just_talking = True
-            else:
-                self.__interests.just_talking = False
+            self.__interests.just_talking = not (
+                self.__interests.movie or self.__interests.memes or self.__interests.music
+            )
 
     def compare_interests(self, other: "User") -> bool:
-        """Сравнивает интересы с другим пользователем"""
-        i1 = self.__interests
-        i2 = other.get_interests()
+        i1, i2 = self.__interests, other.get_interests()
         return (
-            (i1.movie and i2.movie) or
-            (i1.memes and i2.memes) or
-            (i1.music and i2.music) or
-            (i1.just_talking and i2.just_talking)
+            (i1.movie and i2.movie)
+            or (i1.memes and i2.memes)
+            or (i1.music and i2.music)
+            or (i1.just_talking and i2.just_talking)
         )
+
     def get_mutual_interests(self, other: "User") -> list[str]:
-        """Возвращает список общих интересов с другим пользователем"""
-        i1 = self.get_interests()
-        i2 = other.get_interests()
+        i1, i2 = self.get_interests(), other.get_interests()
         return [k for k in ["movie", "memes", "music", "just_talking"] if getattr(i1, k) and getattr(i2, k)]
 
     # --- фильтрация по полу ---
     def set_sex_filter(self, sex: str, value: bool):
-        """Включает/выключает фильтрацию по полу"""
         if sex not in self.__sex_filtration:
             raise ValueError("Некорректный пол для фильтра")
         self.__sex_filtration[sex] = value
 
-    def get_sex_filters(self) -> dict:
-        """Возвращает словарь фильтров по полу"""
+    def get_sex_filters(self) -> dict[str, bool]:
         return self.__sex_filtration
 
     def matches_sex(self, other: "User") -> bool:
-        """Проверяет, подходит ли другой пользователь по фильтру пола"""
-        # Если фильтры выключены, подходит любой
         if not any(self.__sex_filtration.values()):
             return True
         return self.__sex_filtration.get(other.sex, False)
-    
-    # --- методы для работы с бд ---
-    def insert_user_in_database(self):
-        """Добавление пользователя с id = последний id + 1"""        
-        sql = "INSERT INTO users (id, name, age, sex) VALUES (?, ?, ?, ?)"
-        self.__db_handler.cursor.execute(sql, (self.__id, self.__name, self.__age, self.__sex))
-        self.__db_handler.conn.commit()
 
-    def update_user_age_in_database(self, new_age: int):
-        """Обновление возраста пользователя"""
-        sql = "UPDATE users SET age = ? WHERE id = ?"
-        self.__db_handler.cursor.execute(sql, (new_age, self.__id))
-        self.__db_handler.conn.commit()
+    # --- работа с БД ---
+    def save(self):
+        """Сохраняет пользователя в БД (новая запись или обновление)"""
+        if self.__id is None:  # новый пользователь
+            sql = "INSERT INTO users (name, age, sex, interests) VALUES (?, ?, ?, ?)"
+            with sqlite3.connect(self.__db_handler.db_name) as conn:
+                cursor = conn.cursor()
+                cursor.execute(sql, (self.__name, self.__age, self.__sex, str(self.__interests)))
+                conn.commit()
+                self.__id = cursor.lastrowid
+        else:  # обновление
+            sql = "UPDATE users SET name=?, age=?, sex=?, interests=? WHERE id=?"
+            self.__db_handler.execute(
+                sql, (self.__name, self.__age, self.__sex, str(self.__interests), self.__id), commit=True
+            )
 
-    def delete_user(self):
-        """Удаление пользователя по имени"""
+    def delete(self):
+        """Удаляет пользователя из БД"""
+        if self.__id is None:
+            raise ValueError("Пользователь не сохранён в БД")
         sql = "DELETE FROM users WHERE id = ?"
-        self.__db_handler.cursor.execute(sql, (self.__id))
-        self.__db_handler.conn.commit()
+        self.__db_handler.execute(sql, (self.__id,), commit=True)
+        self.__id = None
+
+    def load(self, user_id: int):
+        """Загружает пользователя по id"""
+        sql = """
+            SELECT id, name, age, sex, movie, memes, music, just_talking
+            FROM users
+            WHERE id = ?
+        """
+        row = self.__db_handler.execute(sql, (user_id,), fetch=True)
+        if row:
+            (
+                self.__id,
+                self.__name,
+                self.__age,
+                self.__sex,
+                movie,
+                memes,
+                music,
+                just_talking,
+            ) = row[0]
+            self.__interests.movie = bool(movie)
+            self.__interests.memes = bool(memes)
+            self.__interests.music = bool(music)
+            self.__interests.just_talking = bool(just_talking)

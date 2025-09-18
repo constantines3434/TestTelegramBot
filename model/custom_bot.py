@@ -54,6 +54,9 @@ class CustomBot:
             in ["partner_m_sex", "partner_f_sex", "partner_sex_done"]
         )(self.handle_partner_sex_inline_callback)
         self.__bot.message_handler(content_types=["text"])(self.handle_other_text)
+        self.__bot.callback_query_handler(
+            func=lambda c: c.data in ["confirm_user_data", "edit_user_data"]
+        )(self.handle_confirm_user_data_for_db)
 
     @property
     def bot(self) -> TeleBot:
@@ -289,6 +292,8 @@ class CustomBot:
                     message_id=call.message.message_id,
                     text=f"Вы выбрали: {', '.join(selected) if selected else 'ничего'}",
                 )
+                self.confirm_user_data_for_db_menu(call.message)
+               
             except apihelper.ApiTelegramException as e:
                 if "message is not modified" not in str(e):
                     raise
@@ -305,8 +310,39 @@ class CustomBot:
             except apihelper.ApiTelegramException as e:
                 if "message is not modified" not in str(e):
                     raise
-            self.__bot.send_message(user_id, "Проверка корректности данных и отправка в бд")
+            
+    # ------------------ Подтверждение данных пользователя для бд ------------------        
+    def confirm_user_data_for_db_menu(self, message: Message):
+        """Подтверждение данных пользователя для отправки в бд"""
+        markup = InlineKeyboardMarkup()
+        markup.add(
+            InlineKeyboardButton("Да", callback_data="confirm_user_data"),
+            InlineKeyboardButton("Нет. Заполнить профиль заново", callback_data="edit_user_data"),
+        )
+        self.__bot.send_message(
+            message.chat.id, "Данные для профиля введены корректно?", reply_markup=markup)
+        
+    def handle_confirm_user_data_for_db(self, call):
+        """Оброботчик выбора пола пользователя кнопкаами"""
+        user_id = call.message.chat.id
+        user = self.__users.get(user_id)
+        if not user:
+            return
+        
+        if call.data == "edit_user_data":
+            self.__bot.answer_callback_query(call.id, "Вы выбрали: Заполнить профиль заново")
+
+        elif call.data == "confirm_user_data":
+            if not user.sex:
+                self.__bot.answer_callback_query(
+                    call.id, "Подтвердите данные!"
+                )
+                return
+            self.__bot.send_message(
+                user_id, "Данные отправлены в бд")
             self.__db_handler.close()
+            #метод обработки бд
+            
     # ------------------ Главное меню ------------------
     def show_main_menu(self, chat_id: int):
         """Отображение меню"""

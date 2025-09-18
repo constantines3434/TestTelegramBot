@@ -31,7 +31,12 @@ class SqlHandler:
             "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
             "name": "TEXT NOT NULL",
             "age": "INTEGER",
-            "sex": "TEXT"
+            "sex": "TEXT",
+            # булевы колонки для интересов
+            "movie": "BOOLEAN DEFAULT 0",
+            "memes": "BOOLEAN DEFAULT 0",
+            "music": "BOOLEAN DEFAULT 0",
+            "just_talking": "BOOLEAN DEFAULT 0"
         }
         
         fields_str = ", ".join(
