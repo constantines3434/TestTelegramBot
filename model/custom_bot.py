@@ -17,13 +17,13 @@ class CustomBot:
     __users = {}  # {chat_id: User}
     __waiting_users = []  # список chat_id пользователей, которые ищут собеседника
     __active_chats = {}  # {chat_id: partner_chat_id}
-    __db_handler: SqlHandler
     def __init__(self, token: str):
         """Конструктор класса"""
-        self.__db_handler = SqlHandler("my_database.db")
-        self.__db_handler.connect()
-        self.__db_handler.create_user_table()
-
+        db_handler: SqlHandler = SqlHandler("my_database.db")
+        db_handler.connect()
+        db_handler.create_user_table()
+        db_handler.close()
+        
         self.__bot = TeleBot(token)
         self.register_handlers()
 
@@ -68,7 +68,7 @@ class CustomBot:
         """Заполнение информации о пользователе"""
         user = self.__users.get(message.chat.id)
         if not user:
-            user = User(self.__db_handler)
+            user = User(SqlHandler("my_database.db"))
             self.__users[message.chat.id] = user
         self.__bot.send_message(message.chat.id, "Как тебя зовут?")
         self.__bot.register_next_step_handler(
@@ -340,8 +340,24 @@ class CustomBot:
                 return
             self.__bot.send_message(
                 user_id, "Данные отправлены в бд")
-            self.__db_handler.close()
-            #метод обработки бд
+            self.save_user_data(call.message)
+                
+    #методы обработки бд
+    def save_user_data(self, message: Message):
+        """Сохранение данных пользователя в бд"""
+        user_id = message.chat.id
+        user = self.__users.get(user_id)
+        if not user:
+            return
+        
+        #db_handler = SqlHandler("my_database.db")
+        #db_handler.connect()
+        #сейчас тут
+        #сохранение данных пользовател    
+        user.save()
+        #user.insert_user_in_database(db_handler)  # сохраняем пользователя
+        self.__bot.send_message(user_id, "Тестовое сохранение пользователя в бд")
+        #db_handler.close()
             
     # ------------------ Главное меню ------------------
     def show_main_menu(self, chat_id: int):
@@ -456,8 +472,6 @@ class CustomBot:
             self.__bot.send_photo(partner_id, photo_message_id, caption=caption)
         else:
             self.__bot.send_message(message.chat.id, "Фотографии обрабатываются только в переписке")
-
-
 
     def get_sex_emoji(self, user: User) -> str:
         """Получение эмодзи пола"""

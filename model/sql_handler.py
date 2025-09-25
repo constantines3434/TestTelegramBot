@@ -57,3 +57,22 @@ class SqlHandler:
         sql = "DELETE FROM users WHERE id = ?"
         self.cursor.execute(sql, (id))
         self.conn.commit()
+    
+    def execute(self, sql, params=(), commit=False, fetchone=False, fetchall=False, return_lastrowid=False):
+        """Перегрузка метода execute"""
+        with sqlite3.connect(self.db_name) as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, params)
+
+            result = None
+            if fetchone:
+                result = cursor.fetchone()
+            elif fetchall:
+                result = cursor.fetchall()
+            elif return_lastrowid:
+                result = cursor.lastrowid
+
+            if commit:
+                conn.commit()
+
+            return result

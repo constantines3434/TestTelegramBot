@@ -99,18 +99,45 @@ class User:
     def save(self):
         """Сохраняет пользователя в БД (новая запись или обновление)"""
         if self.__id is None:  # новый пользователь
-            sql = "INSERT INTO users (name, age, sex, interests) VALUES (?, ?, ?, ?)"
-            with sqlite3.connect(self.__db_handler.db_name) as conn:
-                cursor = conn.cursor()
-                cursor.execute(sql, (self.__name, self.__age, self.__sex, str(self.__interests)))
-                conn.commit()
-                self.__id = cursor.lastrowid
-        else:  # обновление
-            sql = "UPDATE users SET name=?, age=?, sex=?, interests=? WHERE id=?"
-            self.__db_handler.execute(
-                sql, (self.__name, self.__age, self.__sex, str(self.__interests), self.__id), commit=True
+            sql = """
+            INSERT INTO users (name, age, sex, movie, memes, music, just_talking)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """
+            self.__id = self.__db_handler.execute(
+                sql,
+                (
+                    self.__name,
+                    self.__age,
+                    self.__sex,
+                    self.__interests.movie,
+                    self.__interests.memes,
+                    self.__interests.music,
+                    self.__interests.just_talking
+                ),
+                commit=True,
+                return_lastrowid=True
             )
-
+        else:  # обновление
+            sql = """
+            UPDATE users
+            SET name=?, age=?, sex=?, movie=?, memes=?, music=?, just_talking=?
+            WHERE id=?
+            """
+            self.__db_handler.execute(
+                sql,
+                (
+                    self.__name,
+                    self.__age,
+                    self.__sex,
+                    self.__interests.movie,
+                    self.__interests.memes,
+                    self.__interests.music,
+                    self.__interests.just_talking,
+                    self.__id
+                ),
+                commit=True
+            )
+        
     def delete(self):
         """Удаляет пользователя из БД"""
         if self.__id is None:
