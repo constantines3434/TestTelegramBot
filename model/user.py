@@ -6,8 +6,8 @@ from model.sql_handler import SqlHandler
 class User:
     """Класс пользователя"""
 
-    def __init__(self, db_handler: SqlHandler):
-        self.__id: int | None = None
+    def __init__(self, db_handler: SqlHandler, id: int):
+        self.__id: int = id
         self.__name: str | None = None
         self.__age: int | None = None
         self.__sex: str | None = None
@@ -98,26 +98,16 @@ class User:
     # --- работа с БД ---
     def save(self):
         """Сохраняет пользователя в БД (новая запись или обновление)"""
-        if self.__id is None:  # новый пользователь
-            sql = """
-            INSERT INTO users (name, age, sex, movie, memes, music, just_talking)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """
-            self.__id = self.__db_handler.execute(
-                sql,
-                (
-                    self.__name,
-                    self.__age,
-                    self.__sex,
-                    self.__interests.movie,
-                    self.__interests.memes,
-                    self.__interests.music,
-                    self.__interests.just_talking
-                ),
-                commit=True,
-                return_lastrowid=True
-            )
-        else:  # обновление
+
+        # проверяем, есть ли запись с таким id в таблице
+        exists = self.__db_handler.execute(
+            "SELECT EXISTS(SELECT 1 FROM users WHERE id=?)", 
+            (self.__id,),
+            fetchone=True
+        )
+
+        if exists and exists[0] == 1:
+            # запись есть → обновляем
             sql = """
             UPDATE users
             SET name=?, age=?, sex=?, movie=?, memes=?, music=?, just_talking=?
@@ -136,6 +126,27 @@ class User:
                     self.__id
                 ),
                 commit=True
+            )
+        else:
+            # записи нет → вставляем новую
+            sql = """
+            INSERT INTO users (id, name, age, sex, movie, memes, music, just_talking)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """
+            self.__db_handler.execute(
+                sql,
+                (
+                    self.__id, #сейчас тут
+                    self.__name,
+                    self.__age,
+                    self.__sex,
+                    self.__interests.movie,
+                    self.__interests.memes,
+                    self.__interests.music,
+                    self.__interests.just_talking
+                ),
+                commit=True,
+                return_lastrowid=True
             )
         
     def delete(self):

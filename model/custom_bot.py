@@ -13,17 +13,17 @@ from model.sql_handler import SqlHandler
 class CustomBot:
     """Бот для поиска собеседника с учетом интересов и пола"""
 
-    __bot: TeleBot
+    __bot: TeleBot = None
     __users = {}  # {chat_id: User}
     __waiting_users = []  # список chat_id пользователей, которые ищут собеседника
     __active_chats = {}  # {chat_id: partner_chat_id}
+    __db_handler: SqlHandler = None
     def __init__(self, token: str):
         """Конструктор класса"""
-        db_handler: SqlHandler = SqlHandler("my_database.db")
-        db_handler.connect()
-        db_handler.create_user_table()
-        db_handler.close()
-        
+        self.__db_handler: SqlHandler = SqlHandler("my_database.db")
+        self.__db_handler.connect()
+        self.__db_handler.create_user_table()
+        self.__db_handler.close()
         self.__bot = TeleBot(token)
         self.register_handlers()
 
@@ -68,7 +68,7 @@ class CustomBot:
         """Заполнение информации о пользователе"""
         user = self.__users.get(message.chat.id)
         if not user:
-            user = User(SqlHandler("my_database.db"))
+            user = User(self.__db_handler, message.chat.id)
             self.__users[message.chat.id] = user
         self.__bot.send_message(message.chat.id, "Как тебя зовут?")
         self.__bot.register_next_step_handler(
@@ -88,7 +88,6 @@ class CustomBot:
             self.__bot.register_next_step_handler(
                 message, self.user_registration, step="age"
             )
-
         elif step == "age":
             try:
                 user.age = int(message.text.strip())
@@ -122,7 +121,6 @@ class CustomBot:
         self.__bot.send_message(
             message.chat.id, "Выберите свой пол:", reply_markup=menu
         )
-
     def create_user_sex_menu(self, selected_sex: str = None):
         """Создание кнопок выбора пола пользователя"""
         markup = InlineKeyboardMarkup()
@@ -218,7 +216,6 @@ class CustomBot:
             self.__bot.answer_callback_query(
                 call.id, f"Фильтр по мужчинам: {'вкл' if not current else 'выкл'}"
             )
-
         elif call.data == "partner_f_sex":
             current = user.get_sex_filters().get("Ж", False)
             user.set_sex_filter("Ж", not current)
@@ -226,7 +223,6 @@ class CustomBot:
             self.__bot.answer_callback_query(
                 call.id, f"Фильтр по женщинам: {'вкл' if not current else 'выкл'}"
             )
-
         elif call.data == "partner_sex_done":
             filters = user.get_sex_filters()
             selected = [sex for sex, v in filters.items() if v]
@@ -237,7 +233,6 @@ class CustomBot:
                 self.__bot.send_message(user_id, text)
                 self.user_registration(call.message, step="interest")
             return
-
         if updated:
             try:
                 self.__bot.edit_message_reply_markup(

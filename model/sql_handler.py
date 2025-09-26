@@ -28,7 +28,7 @@ class SqlHandler:
     def create_user_table(self):
         """Создание таблицы пользователей"""
         fields: dict = {
-            "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+            "id": "INTEGER PRIMARY KEY", #AUTOINCREMENT
             "name": "TEXT NOT NULL",
             "age": "INTEGER",
             "sex": "TEXT",
@@ -38,13 +38,14 @@ class SqlHandler:
             "music": "BOOLEAN DEFAULT 0",
             "just_talking": "BOOLEAN DEFAULT 0"
         }
-        
+
         fields_str = ", ".join(
             f"{name} {dtype}" for name, dtype in fields.items()
         )
-        query = f"CREATE TABLE IF NOT EXISTS users ({fields_str})"
-        self.cursor.execute(query)
-        self.conn.commit()
+        sql = f"CREATE TABLE IF NOT EXISTS users ({fields_str})"
+
+        # используем твой метод execute
+        self.execute(sql, commit=True)
     
     def get_all_users(self):
         """Получение всех пользователей"""
