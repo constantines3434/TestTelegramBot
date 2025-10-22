@@ -14,26 +14,82 @@ class CustomBot:
     """Бот для поиска собеседника с учетом интересов и пола"""
 
     __bot: TeleBot = None
-    __users = {}  # {chat_id: User}
+    __users = {}          # {chat_id: User}
     __waiting_users = []  # список chat_id пользователей, которые ищут собеседника
-    __active_chats = {}  # {chat_id: partner_chat_id}
+    __active_chats = {}   # {chat_id: partner_chat_id}
     __db_handler: SqlHandler = None
+
     def __init__(self, token: str):
         """Конструктор класса"""
-        self.__db_handler: SqlHandler = SqlHandler("my_database.db")
+        # Инициализация БД
+        self.__db_handler = SqlHandler("my_database.db")
         self.__db_handler.connect()
         self.__db_handler.create_user_table()
         self.__db_handler.close()
+
+        # Инициализация бота
         self.__bot = TeleBot(token)
         self.register_handlers()
+        print("✅ Бот инициализирован и готов к работе!")
+
+    # -------------------------------------------------------------
+    #                     Превью и запуск
+    # -------------------------------------------------------------
+
+    def preview_message(self, message: Message) -> None:
+        """Превью для пользователя"""
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("🚀 Начать", callback_data="start"))
+
+        caption = (
+            "👋 Хеллоу!\n\n"
+            "Я бот Кости!\n"
+            "В этом тестовом боте можно анонимно общаться с челиками и чувылдами 🤙😎🤙\n\n"
+            "Выбери действие ниже 👇"
+        )
+
+        try:
+            with open("src/preview.jpeg", "rb") as photo:
+                self.__bot.send_photo(message.chat.id, photo, caption=caption, reply_markup=markup)
+        except FileNotFoundError:
+            # если картинка не найдена, просто отправляем текст
+            self.__bot.send_message(message.chat.id, caption, reply_markup=markup)
+
+    def handle_start_button(self, call):
+        """Обработка нажатия кнопки '🚀 Начать'"""
+        chat_id = call.message.chat.id
+        self.__bot.answer_callback_query(call.id)
+        self.start(call.message)
+
+    # -------------------------------------------------------------
+    #                      Регистрация
+    # -------------------------------------------------------------
+
+    def start(self, message: Message):
+        """Начало регистрации"""
+        user = self.__users.get(message.chat.id)
+        if not user:
+            user = User(self.__db_handler, message.chat.id)
+            self.__users[message.chat.id] = user
+
+        self.__bot.send_message(message.chat.id, "Как тебя зовут?")
+        self.__bot.register_next_step_handler(message, self.user_registration, step="name")
+
+    # -------------------------------------------------------------
+    #                   Регистрация обработчиков
+    # -------------------------------------------------------------
 
     def register_handlers(self):
-        """Регистратор обработчиков"""
-        self.__bot.message_handler(commands=["start"])(self.start)
+        """Регистрация всех обработчиков"""
+        # Команды
+        self.__bot.message_handler(commands=["start"])(self.preview_message)
         self.__bot.message_handler(commands=["help"])(self.help)
         self.__bot.message_handler(commands=["filters"])(self.filter)
-        ##############################
-        #обработчик типов сообщений
+
+        # Callback при нажатии "🚀 Начать"
+        self.__bot.callback_query_handler(func=lambda c: c.data == "start")(self.handle_start_button)
+
+        # Остальные типы сообщений
         self.__bot.message_handler(content_types=["sticker"])(self.sticker_handler)
         self.__bot.message_handler(content_types=["voice"])(self.voice_message_handler)
         self.__bot.message_handler(content_types=["audio"])(self.audio_message_handler)
@@ -41,7 +97,8 @@ class CustomBot:
         self.__bot.message_handler(content_types=["video_note"])(self.video_note_message_handler)
         self.__bot.message_handler(content_types=["document"])(self.document_message_handler)
         self.__bot.message_handler(content_types=["photo"])(self.photo_message_handler)
-        ##############################
+
+        # Inline кнопки
         self.__bot.message_handler(func=self.is_reply_button)(self.handle_reply_buttons)
         self.__bot.callback_query_handler(
             func=lambda c: c.data.startswith("interest_") or c.data == "interest_done"
@@ -50,30 +107,21 @@ class CustomBot:
             func=lambda c: c.data in ["user_m_sex", "user_f_sex", "user_sex_done"]
         )(self.handle_user_sex_inline_callback)
         self.__bot.callback_query_handler(
-            func=lambda c: c.data
-            in ["partner_m_sex", "partner_f_sex", "partner_sex_done"]
+            func=lambda c: c.data in ["partner_m_sex", "partner_f_sex", "partner_sex_done"]
         )(self.handle_partner_sex_inline_callback)
         self.__bot.message_handler(content_types=["text"])(self.handle_other_text)
         self.__bot.callback_query_handler(
             func=lambda c: c.data in ["confirm_user_data", "edit_user_data"]
         )(self.handle_confirm_user_data_for_db)
 
+    # -------------------------------------------------------------
+    #                       Вспомогательные
+    # -------------------------------------------------------------
+
     @property
     def bot(self) -> TeleBot:
-        """геттер бота"""
+        """Геттер бота"""
         return self.__bot
-
-    # ------------------ Регистрация ------------------
-    def start(self, message: Message):
-        """Заполнение информации о пользователе"""
-        user = self.__users.get(message.chat.id)
-        if not user:
-            user = User(self.__db_handler, message.chat.id)
-            self.__users[message.chat.id] = user
-        self.__bot.send_message(message.chat.id, "Как тебя зовут?")
-        self.__bot.register_next_step_handler(
-            message, self.user_registration, step="name"
-        )
 
     def user_registration(self, message: Message, step="name"):
         """Регистрация пользователя"""

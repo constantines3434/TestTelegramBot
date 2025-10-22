@@ -15,3 +15,4 @@ while True:
     except Exception as e:
         print(f"Ошибка: {e}")
         time.sleep(15)
+
