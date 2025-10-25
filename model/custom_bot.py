@@ -366,7 +366,7 @@ class CustomBot:
             message.chat.id, "Данные для профиля введены корректно?", reply_markup=markup)
         
     def handle_confirm_user_data_for_db(self, call):
-        """Оброботчик выбора пола пользователя кнопкаами"""
+        """Обработчик выбора пола пользователя кнопкаами"""
         user_id = call.message.chat.id
         user = self.__users.get(user_id)
         if not user:
@@ -384,6 +384,7 @@ class CustomBot:
             self.__bot.send_message(
                 user_id, "Данные отправлены в бд")
             self.save_user_data(call.message)
+            self.show_main_menu(call.message.chat.id)
                 
     #методы обработки бд
     def save_user_data(self, message: Message):
